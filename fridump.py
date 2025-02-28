@@ -1,3 +1,4 @@
+# Edited by Abhijith // 28/02/2025
 import textwrap
 import frida
 import os
@@ -8,18 +9,6 @@ import utils
 import argparse
 import logging
 
-logo = """
-        ______    _     _
-        |  ___|  (_)   | |
-        | |_ _ __ _  __| |_   _ _ __ ___  _ __
-        |  _| '__| |/ _` | | | | '_ ` _ \| '_ \\
-        | | | |  | | (_| | |_| | | | | | | |_) |
-        \_| |_|  |_|\__,_|\__,_|_| |_| |_| .__/
-                                         | |
-                                         |_|
-        """
-
-
 # Main Menu
 def MENU():
     parser = argparse.ArgumentParser(
@@ -27,8 +16,8 @@ def MENU():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=textwrap.dedent(""))
 
-    parser.add_argument('process',
-                        help='the process that you will be injecting to')
+   # parser.add_argument('process',
+                  #      help='the process that you will be injecting to')
     parser.add_argument('-o', '--out', type=str, metavar="dir",
                         help='provide full output directory path. (def: \'dump\')')
     parser.add_argument('-U', '--usb', action='store_true',
@@ -41,22 +30,32 @@ def MENU():
                         help='run strings on all dump files. Saved in output dir.')
     parser.add_argument('--max-size', type=int, metavar="bytes",
                         help='maximum size of dump file in bytes (def: 20971520)')
+    parser.add_argument('-l', '--listprocess', action='store_true',
+                        help='List all available processes')    #new           
     args = parser.parse_args()
     return args
 
-
-print(logo)
+#print(logo)
 
 arguments = MENU()
 
 # Define Configurations
-APP_NAME = arguments.process
+#APP_NAME = arguments.process
 DIRECTORY = ""
 USB = arguments.usb
 DEBUG_LEVEL = logging.INFO
+LISTPRO = arguments.listprocess #new
 STRINGS = arguments.strings
 MAX_SIZE = 20971520
 PERMS = 'rw-'
+
+#change
+device = frida.get_usb_device(timeout=5)
+print(device)
+processes = device.enumerate_processes()
+for proce in processes:
+    print(f"{proce.pid}: {proce.name}")
+APP_NAME = input("Enter the process name from the above list to take the memory dump")    
 
 if arguments.read_only:
     PERMS = 'r--'
@@ -65,12 +64,11 @@ if arguments.verbose:
     DEBUG_LEVEL = logging.DEBUG
 logging.basicConfig(format='%(levelname)s:%(message)s', level=DEBUG_LEVEL)
 
-
 # Start a new Session
 session = None
 try:
     if USB:
-        session = frida.get_usb_device().attach(APP_NAME)
+    	session = frida.get_usb_device().attach(APP_NAME)
     else:
         session = frida.attach(APP_NAME)
 except Exception as e:
