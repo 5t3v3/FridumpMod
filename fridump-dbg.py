@@ -43,8 +43,8 @@ def list_processes(device):
 
         for process in running_processes:
             package_name = installed_apps.get(process.pid, "Unknown")  # Get package name if available
-            if process.pid > 0 and not process.name.startswith(system_prefixes) and package_name != "Unknown":
-                user_apps.append((process.pid, process.name, package_name))  # Ensure PID > 0
+            if process.pid > 0 and package_name != "Unknown" and not package_name.startswith(system_prefixes):
+                user_apps.append((process.pid, process.name, package_name))
 
         # Display only user-installed running applications with valid PIDs
         if user_apps:
