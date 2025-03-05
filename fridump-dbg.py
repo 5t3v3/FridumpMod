@@ -1,4 +1,4 @@
-#Edited by Abhijith on 01/03/2025
+#Edited by Abhijith on 05/03/2025
 import textwrap
 import frida
 import os
@@ -35,9 +35,27 @@ def get_device():
 
 def list_processes(device):
     try:
-        processes = device.enumerate_processes()
-        for process in processes:
-            print(f"{process.pid}: {process.name}")
+        running_processes = device.enumerate_processes()  # Get all running processes
+        installed_apps = {app.pid: app.identifier for app in device.enumerate_applications()}  # Map PIDs to package names
+
+        user_apps = []
+        system_prefixes = ("com.android.", "android.", "com.google.android.", "com.miui.", "com.samsung.", "com.huawei.", "com.apple.")
+
+        for process in running_processes:
+            package_name = installed_apps.get(process.pid, "Unknown")  # Get package name if available
+            if process.pid > 0 and not process.name.startswith(system_prefixes) and package_name != "Unknown":
+                user_apps.append((process.pid, process.name, package_name))  # Ensure PID > 0
+
+        # Display only user-installed running applications with valid PIDs
+        if user_apps:
+            print("\n----------- Running User Installed Applications -----------\n")
+            print("{:<8} {:<30} {:<40}".format("PID", "Process Name", "Package Identifier"))
+            print("=" * 80)
+            for pid, name, identifier in user_apps:
+                print("{:<8} {:<30} {:<40}".format(pid, name, identifier))
+        else:
+            print("\nNo user-installed applications are currently running.")
+
     except Exception as e:
         logging.error("Failed to list processes: %s", e)
         sys.exit(1)
@@ -77,7 +95,7 @@ def start_memory_dump(session, perms, max_size, directory):
     script.load()
     agent = script.exports_sync
     ranges = agent.enumerate_ranges(perms)
-    
+
     for i, range in enumerate(ranges):
         base, size = range["base"], range["size"]
         logging.debug("Dumping memory: Base=%s, Size=%d", base, size)
@@ -91,28 +109,29 @@ def main():
     args = get_arguments()
     setup_logger(args.verbose)
     device = get_device()
+
+    print("\n\n-----------Device Details----------\n")
     print(device,"\n")
-    print("-----------Process List-----------\n")
-    
+
     if args.listprocess:
         list_processes(device)
         sys.exit(0)
-    
+
     list_processes(device)
     app_name = input("\nEnter the process name to dump memory: ")
     session = attach_to_process(device, app_name)
-    
+
     directory = setup_output_directory(args.out)
     perms = 'r--' if args.read_only else 'rw-'
-    
+
     start_memory_dump(session, perms, args.max_size, directory)
-    
+
     if args.strings:
         files = os.listdir(directory)
         for i, file in enumerate(files):
             utils.strings(file, directory)
             utils.printProgress(i + 1, len(files), prefix='Processing:', suffix='Complete', bar=50)
-    
+
     logging.info("Memory dump complete!")
 
 if __name__ == "__main__":
